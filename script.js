@@ -8,7 +8,10 @@ const musicText = document.getElementById('musicText');
 const musicIcon = document.getElementById('musicIcon');
 
 let opened = false;
-let autoScrollTimer = null;
+
+let autoScrollRunning = false;
+let autoScrollFrame = null;
+let autoScrollFallback = null;
 
 
 // ============================
@@ -88,7 +91,7 @@ function openInvitation() {
   startMusic();
 
 
-  // إخفاء شاشة البداية وإظهار الدعوة
+  // إخفاء شاشة البداية وإظهار الموقع
   setTimeout(() => {
 
     if (opening) {
@@ -102,85 +105,208 @@ function openInvitation() {
 
     document.body.classList.add('invitation-open');
 
-    window.scrollTo({
-      top: 0,
-      left: 0,
-      behavior: 'auto'
-    });
+
+    // نرجع لأول الصفحة
+    window.scrollTo(0, 0);
 
   }, 1800);
 
 
-  // بداية النزول التلقائي
+  // بعد ظهور الدعوة نبدأ النزول
   setTimeout(() => {
 
-    startAutoScroll();
+    // حركة صغيرة تساعد Safari / Chrome Mobile
+    window.scrollTo(0, 1);
 
-  }, 3000);
+    setTimeout(() => {
+      startAutoScroll();
+    }, 250);
+
+  }, 3100);
 }
 
 
 // ============================
 // Auto Scroll
+// Mobile + Desktop
 // ============================
 
 function startAutoScroll() {
 
-  // إذا شغال من قبل لا نشغله مرة ثانية
-  if (autoScrollTimer !== null) {
-    return;
+  if (autoScrollRunning) return;
+
+  autoScrollRunning = true;
+
+
+  // كل ما زاد الرقم يصير أسرع
+  const speed = 1.35;
+
+  let lastPosition = window.scrollY;
+
+  let stuckCounter = 0;
+
+
+  function getMaxScroll() {
+
+    const bodyHeight =
+      document.body.scrollHeight;
+
+    const htmlHeight =
+      document.documentElement.scrollHeight;
+
+    const pageHeight =
+      Math.max(bodyHeight, htmlHeight);
+
+    return Math.max(
+      0,
+      pageHeight - window.innerHeight
+    );
   }
 
-  /*
-    السرعة:
-    1 = بطيء
-    2 = متوسط
-    3 = أسرع
-  */
-  const pixelsPerStep = 1;
 
-  /*
-    كل كم ملي ثانية ينزل
-    كل ما قل الرقم يصير أسرع
-  */
-  const intervalTime = 18;
+  function scrollStep() {
 
+    if (!autoScrollRunning) return;
 
-  autoScrollTimer = setInterval(() => {
-
-    const documentHeight = Math.max(
-      document.body.scrollHeight,
-      document.documentElement.scrollHeight
-    );
 
     const maxScroll =
-      documentHeight - window.innerHeight;
+      getMaxScroll();
 
 
-    // إذا وصلنا للنهاية
-    if (window.scrollY >= maxScroll - 5) {
+    // وصلنا للنهاية
+    if (window.scrollY >= maxScroll - 4) {
 
-      window.scrollTo({
-        top: maxScroll,
-        behavior: 'auto'
-      });
-
-      clearInterval(autoScrollTimer);
-
-      autoScrollTimer = null;
+      stopAutoScroll();
 
       return;
     }
 
 
-    // النزول الفعلي
-    window.scrollBy({
-      top: pixelsPerStep,
-      left: 0,
-      behavior: 'auto'
-    });
+    const nextPosition =
+      Math.min(
+        window.scrollY + speed,
+        maxScroll
+      );
 
-  }, intervalTime);
+
+    window.scrollTo(
+      0,
+      nextPosition
+    );
+
+
+    // فحص إذا الجوال علق وما تحرك
+    if (Math.abs(window.scrollY - lastPosition) < 0.1) {
+
+      stuckCounter++;
+
+    } else {
+
+      stuckCounter = 0;
+
+      lastPosition =
+        window.scrollY;
+    }
+
+
+    /*
+      إذا requestAnimationFrame ما حرك الصفحة
+      نخلي fallback يكمل
+    */
+    if (stuckCounter > 40) {
+
+      startScrollFallback();
+
+      return;
+    }
+
+
+    autoScrollFrame =
+      requestAnimationFrame(scrollStep);
+  }
+
+
+  autoScrollFrame =
+    requestAnimationFrame(scrollStep);
+}
+
+
+// ============================
+// Mobile Fallback
+// ============================
+
+function startScrollFallback() {
+
+  if (autoScrollFrame) {
+
+    cancelAnimationFrame(autoScrollFrame);
+
+    autoScrollFrame = null;
+  }
+
+
+  if (autoScrollFallback) return;
+
+
+  autoScrollFallback =
+    setInterval(() => {
+
+      const bodyHeight =
+        document.body.scrollHeight;
+
+      const htmlHeight =
+        document.documentElement.scrollHeight;
+
+      const maxScroll =
+        Math.max(
+          bodyHeight,
+          htmlHeight
+        ) - window.innerHeight;
+
+
+      if (window.scrollY >= maxScroll - 4) {
+
+        stopAutoScroll();
+
+        return;
+      }
+
+
+      window.scrollTo(
+        0,
+        Math.min(
+          window.scrollY + 2,
+          maxScroll
+        )
+      );
+
+    }, 22);
+}
+
+
+// ============================
+// Stop Scroll
+// ============================
+
+function stopAutoScroll() {
+
+  autoScrollRunning = false;
+
+
+  if (autoScrollFrame) {
+
+    cancelAnimationFrame(autoScrollFrame);
+
+    autoScrollFrame = null;
+  }
+
+
+  if (autoScrollFallback) {
+
+    clearInterval(autoScrollFallback);
+
+    autoScrollFallback = null;
+  }
 }
 
 
@@ -190,11 +316,7 @@ function startAutoScroll() {
 
 window.addEventListener('load', () => {
 
-  window.scrollTo({
-    top: 0,
-    left: 0,
-    behavior: 'auto'
-  });
+  window.scrollTo(0, 0);
 
 
   // يبقى الغلاف ظاهر شوي
@@ -216,7 +338,8 @@ const weddingDate =
 
 function updateCountdown() {
 
-  const now = Date.now();
+  const now =
+    Date.now();
 
   const distance =
     weddingDate - now;
@@ -245,7 +368,6 @@ function updateCountdown() {
   }
 
 
-  // إذا خلص الموعد
   if (distance <= 0) {
 
     daysElement.textContent = '00';
@@ -308,9 +430,10 @@ function updateCountdown() {
 }
 
 
-// تشغيل العداد مباشرة
+// تشغيل العداد
 updateCountdown();
 
-
-// تحديث العداد كل ثانية
-setInterval(updateCountdown, 1000);
+setInterval(
+  updateCountdown,
+  1000
+);
