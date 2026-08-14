@@ -8,7 +8,10 @@ const musicText = document.getElementById('musicText');
 const musicIcon = document.getElementById('musicIcon');
 
 let opened = false;
-let autoScrollTimer = null;
+
+let autoMoveStarted = false;
+let autoMoveFrame = null;
+let autoMoveY = 0;
 
 
 // ============================
@@ -27,6 +30,7 @@ function updateMusicButton(isPlaying) {
   }
 }
 
+
 async function startMusic() {
   if (!music) return;
 
@@ -41,12 +45,14 @@ async function startMusic() {
   }
 }
 
+
 function stopMusic() {
   if (!music) return;
 
   music.pause();
   updateMusicButton(false);
 }
+
 
 if (musicButton) {
   musicButton.addEventListener('click', async () => {
@@ -78,8 +84,10 @@ function openInvitation() {
   // محاولة تشغيل الموسيقى
   startMusic();
 
+
   // إخفاء شاشة البداية
   setTimeout(() => {
+
     if (opening) {
       opening.classList.add('is-gone');
     }
@@ -87,74 +95,124 @@ function openInvitation() {
     if (site) {
       site.setAttribute('aria-hidden', 'false');
       site.classList.add('is-visible');
+
+      // نضمن البداية من فوق
+      site.style.transform = 'translate3d(0, 0, 0)';
     }
 
     document.body.classList.add('invitation-open');
 
-    const scroller =
-      document.scrollingElement ||
-      document.documentElement;
-
-    scroller.scrollTop = 0;
-
   }, 1800);
 
-  // بدء النزول بعد ظهور الدعوة
+
+  // بداية الحركة مثل الفيديو
   setTimeout(() => {
-    startAutoScroll();
+    startAutoMove();
   }, 3200);
 }
 
 
 // ============================
-// Auto Scroll
+// Auto Move Like Video
 // iPhone + Android + Desktop
 // ============================
 
-function startAutoScroll() {
-  if (autoScrollTimer !== null) return;
+function startAutoMove() {
+  if (autoMoveStarted || !site) return;
 
-  const scroller =
-    document.scrollingElement ||
-    document.documentElement;
+  autoMoveStarted = true;
 
   /*
-    السرعة
-    1 = بطيء
-    2 = متوسط
-    3 = أسرع
+    السرعة:
+    0.25 = بطيء
+    0.45 = مناسب
+    0.70 = أسرع
   */
-  const speed = 2;
+  const speed = 0.45;
 
-  /*
-    كل كم ملي ثانية يتحرك
-  */
-  const interval = 28;
+  let lastTime = performance.now();
 
-  // حركة بسيطة بالبداية للجوال
-  scroller.scrollTop = 1;
 
-  autoScrollTimer = setInterval(() => {
+  function moveFrame(currentTime) {
+    if (!autoMoveStarted) return;
 
-    const maxScroll =
-      scroller.scrollHeight -
+    const delta =
+      Math.min(currentTime - lastTime, 40);
+
+    lastTime = currentTime;
+
+
+    const viewportHeight =
       window.innerHeight;
 
-    // وصلنا للنهاية
-    if (scroller.scrollTop >= maxScroll - 5) {
-      clearInterval(autoScrollTimer);
-      autoScrollTimer = null;
+    const siteHeight =
+      site.scrollHeight;
 
-      scroller.scrollTop = maxScroll;
+
+    // أقصى مسافة لتحريك الكرت
+    const maxMove =
+      Math.max(
+        0,
+        siteHeight - viewportHeight
+      );
+
+
+    // وصلنا للنهاية
+    if (autoMoveY >= maxMove) {
+
+      autoMoveY = maxMove;
+
+      site.style.transform =
+        `translate3d(0, -${autoMoveY}px, 0)`;
+
+      autoMoveStarted = false;
 
       return;
     }
 
-    // النزول الفعلي
-    scroller.scrollTop =
-      scroller.scrollTop + speed;
 
-  }, interval);
+    // الحركة
+    autoMoveY +=
+      speed * (delta / 16.67);
+
+
+    if (autoMoveY > maxMove) {
+      autoMoveY = maxMove;
+    }
+
+
+    site.style.transform =
+      `translate3d(0, -${autoMoveY}px, 0)`;
+
+
+    autoMoveFrame =
+      requestAnimationFrame(moveFrame);
+  }
+
+
+  autoMoveFrame =
+    requestAnimationFrame(moveFrame);
+}
+
+
+// ============================
+// Restart movement if needed
+// ============================
+
+function restartAutoMove() {
+  if (!site) return;
+
+  if (autoMoveFrame) {
+    cancelAnimationFrame(autoMoveFrame);
+  }
+
+  autoMoveY = 0;
+  autoMoveStarted = false;
+
+  site.style.transform =
+    'translate3d(0, 0, 0)';
+
+  startAutoMove();
 }
 
 
@@ -163,15 +221,42 @@ function startAutoScroll() {
 // ============================
 
 window.addEventListener('load', () => {
-  const scroller =
-    document.scrollingElement ||
-    document.documentElement;
 
-  scroller.scrollTop = 0;
+  autoMoveY = 0;
+
+  if (site) {
+    site.style.transform =
+      'translate3d(0, 0, 0)';
+  }
 
   setTimeout(() => {
     openInvitation();
   }, 1200);
+});
+
+
+// ============================
+// Fix screen rotation / resize
+// ============================
+
+window.addEventListener('resize', () => {
+
+  if (!site) return;
+
+  const maxMove =
+    Math.max(
+      0,
+      site.scrollHeight -
+      window.innerHeight
+    );
+
+  if (autoMoveY > maxMove) {
+    autoMoveY = maxMove;
+
+    site.style.transform =
+      `translate3d(0, -${autoMoveY}px, 0)`;
+  }
+
 });
 
 
@@ -182,11 +267,15 @@ window.addEventListener('load', () => {
 const weddingDate =
   new Date('2026-09-08T20:30:00+03:00').getTime();
 
+
 function updateCountdown() {
-  const now = Date.now();
+
+  const now =
+    Date.now();
 
   const distance =
     weddingDate - now;
+
 
   const daysElement =
     document.getElementById('days');
@@ -200,6 +289,7 @@ function updateCountdown() {
   const secondsElement =
     document.getElementById('seconds');
 
+
   if (
     !daysElement ||
     !hoursElement ||
@@ -209,7 +299,9 @@ function updateCountdown() {
     return;
   }
 
+
   if (distance <= 0) {
+
     daysElement.textContent = '00';
     hoursElement.textContent = '00';
     minutesElement.textContent = '00';
@@ -218,11 +310,13 @@ function updateCountdown() {
     return;
   }
 
+
   const days =
     Math.floor(
       distance /
       (1000 * 60 * 60 * 24)
     );
+
 
   const hours =
     Math.floor(
@@ -233,6 +327,7 @@ function updateCountdown() {
       (1000 * 60 * 60)
     );
 
+
   const minutes =
     Math.floor(
       (
@@ -242,6 +337,7 @@ function updateCountdown() {
       (1000 * 60)
     );
 
+
   const seconds =
     Math.floor(
       (
@@ -250,6 +346,7 @@ function updateCountdown() {
       ) /
       1000
     );
+
 
   daysElement.textContent =
     String(days).padStart(2, '0');
@@ -263,6 +360,7 @@ function updateCountdown() {
   secondsElement.textContent =
     String(seconds).padStart(2, '0');
 }
+
 
 updateCountdown();
 
