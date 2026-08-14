@@ -8,10 +8,7 @@ const musicText = document.getElementById('musicText');
 const musicIcon = document.getElementById('musicIcon');
 
 let opened = false;
-
-let autoScrollRunning = false;
-let autoScrollFrame = null;
-let autoScrollFallback = null;
+let autoScrollTimer = null;
 
 
 // ============================
@@ -30,32 +27,26 @@ function updateMusicButton(isPlaying) {
   }
 }
 
-
 async function startMusic() {
   if (!music) return;
 
   try {
     music.volume = 0.45;
-
     await music.play();
 
     updateMusicButton(true);
   } catch (error) {
     console.log('المتصفح منع تشغيل الموسيقى تلقائيًا');
-
     updateMusicButton(false);
   }
 }
-
 
 function stopMusic() {
   if (!music) return;
 
   music.pause();
-
   updateMusicButton(false);
 }
-
 
 if (musicButton) {
   musicButton.addEventListener('click', async () => {
@@ -71,29 +62,24 @@ if (musicButton) {
 
 
 // ============================
-// Open Invitation Automatically
+// Open Invitation
 // ============================
 
 function openInvitation() {
-
   if (opened) return;
 
   opened = true;
-
 
   // فتح الظرف
   if (envelope) {
     envelope.classList.add('open');
   }
 
-
   // محاولة تشغيل الموسيقى
   startMusic();
 
-
-  // إخفاء شاشة البداية وإظهار الموقع
+  // إخفاء شاشة البداية
   setTimeout(() => {
-
     if (opening) {
       opening.classList.add('is-gone');
     }
@@ -105,208 +91,70 @@ function openInvitation() {
 
     document.body.classList.add('invitation-open');
 
+    const scroller =
+      document.scrollingElement ||
+      document.documentElement;
 
-    // نرجع لأول الصفحة
-    window.scrollTo(0, 0);
+    scroller.scrollTop = 0;
 
   }, 1800);
 
-
-  // بعد ظهور الدعوة نبدأ النزول
+  // بدء النزول بعد ظهور الدعوة
   setTimeout(() => {
-
-    // حركة صغيرة تساعد Safari / Chrome Mobile
-    window.scrollTo(0, 1);
-
-    setTimeout(() => {
-      startAutoScroll();
-    }, 250);
-
-  }, 3100);
+    startAutoScroll();
+  }, 3200);
 }
 
 
 // ============================
 // Auto Scroll
-// Mobile + Desktop
+// iPhone + Android + Desktop
 // ============================
 
 function startAutoScroll() {
+  if (autoScrollTimer !== null) return;
 
-  if (autoScrollRunning) return;
+  const scroller =
+    document.scrollingElement ||
+    document.documentElement;
 
-  autoScrollRunning = true;
+  /*
+    السرعة
+    1 = بطيء
+    2 = متوسط
+    3 = أسرع
+  */
+  const speed = 2;
 
+  /*
+    كل كم ملي ثانية يتحرك
+  */
+  const interval = 28;
 
-  // كل ما زاد الرقم يصير أسرع
-  const speed = 1.35;
+  // حركة بسيطة بالبداية للجوال
+  scroller.scrollTop = 1;
 
-  let lastPosition = window.scrollY;
-
-  let stuckCounter = 0;
-
-
-  function getMaxScroll() {
-
-    const bodyHeight =
-      document.body.scrollHeight;
-
-    const htmlHeight =
-      document.documentElement.scrollHeight;
-
-    const pageHeight =
-      Math.max(bodyHeight, htmlHeight);
-
-    return Math.max(
-      0,
-      pageHeight - window.innerHeight
-    );
-  }
-
-
-  function scrollStep() {
-
-    if (!autoScrollRunning) return;
-
+  autoScrollTimer = setInterval(() => {
 
     const maxScroll =
-      getMaxScroll();
-
+      scroller.scrollHeight -
+      window.innerHeight;
 
     // وصلنا للنهاية
-    if (window.scrollY >= maxScroll - 4) {
+    if (scroller.scrollTop >= maxScroll - 5) {
+      clearInterval(autoScrollTimer);
+      autoScrollTimer = null;
 
-      stopAutoScroll();
-
-      return;
-    }
-
-
-    const nextPosition =
-      Math.min(
-        window.scrollY + speed,
-        maxScroll
-      );
-
-
-    window.scrollTo(
-      0,
-      nextPosition
-    );
-
-
-    // فحص إذا الجوال علق وما تحرك
-    if (Math.abs(window.scrollY - lastPosition) < 0.1) {
-
-      stuckCounter++;
-
-    } else {
-
-      stuckCounter = 0;
-
-      lastPosition =
-        window.scrollY;
-    }
-
-
-    /*
-      إذا requestAnimationFrame ما حرك الصفحة
-      نخلي fallback يكمل
-    */
-    if (stuckCounter > 40) {
-
-      startScrollFallback();
+      scroller.scrollTop = maxScroll;
 
       return;
     }
 
+    // النزول الفعلي
+    scroller.scrollTop =
+      scroller.scrollTop + speed;
 
-    autoScrollFrame =
-      requestAnimationFrame(scrollStep);
-  }
-
-
-  autoScrollFrame =
-    requestAnimationFrame(scrollStep);
-}
-
-
-// ============================
-// Mobile Fallback
-// ============================
-
-function startScrollFallback() {
-
-  if (autoScrollFrame) {
-
-    cancelAnimationFrame(autoScrollFrame);
-
-    autoScrollFrame = null;
-  }
-
-
-  if (autoScrollFallback) return;
-
-
-  autoScrollFallback =
-    setInterval(() => {
-
-      const bodyHeight =
-        document.body.scrollHeight;
-
-      const htmlHeight =
-        document.documentElement.scrollHeight;
-
-      const maxScroll =
-        Math.max(
-          bodyHeight,
-          htmlHeight
-        ) - window.innerHeight;
-
-
-      if (window.scrollY >= maxScroll - 4) {
-
-        stopAutoScroll();
-
-        return;
-      }
-
-
-      window.scrollTo(
-        0,
-        Math.min(
-          window.scrollY + 2,
-          maxScroll
-        )
-      );
-
-    }, 22);
-}
-
-
-// ============================
-// Stop Scroll
-// ============================
-
-function stopAutoScroll() {
-
-  autoScrollRunning = false;
-
-
-  if (autoScrollFrame) {
-
-    cancelAnimationFrame(autoScrollFrame);
-
-    autoScrollFrame = null;
-  }
-
-
-  if (autoScrollFallback) {
-
-    clearInterval(autoScrollFallback);
-
-    autoScrollFallback = null;
-  }
+  }, interval);
 }
 
 
@@ -315,15 +163,14 @@ function stopAutoScroll() {
 // ============================
 
 window.addEventListener('load', () => {
+  const scroller =
+    document.scrollingElement ||
+    document.documentElement;
 
-  window.scrollTo(0, 0);
+  scroller.scrollTop = 0;
 
-
-  // يبقى الغلاف ظاهر شوي
   setTimeout(() => {
-
     openInvitation();
-
   }, 1200);
 });
 
@@ -335,15 +182,11 @@ window.addEventListener('load', () => {
 const weddingDate =
   new Date('2026-09-08T20:30:00+03:00').getTime();
 
-
 function updateCountdown() {
-
-  const now =
-    Date.now();
+  const now = Date.now();
 
   const distance =
     weddingDate - now;
-
 
   const daysElement =
     document.getElementById('days');
@@ -357,7 +200,6 @@ function updateCountdown() {
   const secondsElement =
     document.getElementById('seconds');
 
-
   if (
     !daysElement ||
     !hoursElement ||
@@ -367,9 +209,7 @@ function updateCountdown() {
     return;
   }
 
-
   if (distance <= 0) {
-
     daysElement.textContent = '00';
     hoursElement.textContent = '00';
     minutesElement.textContent = '00';
@@ -378,13 +218,11 @@ function updateCountdown() {
     return;
   }
 
-
   const days =
     Math.floor(
       distance /
       (1000 * 60 * 60 * 24)
     );
-
 
   const hours =
     Math.floor(
@@ -395,7 +233,6 @@ function updateCountdown() {
       (1000 * 60 * 60)
     );
 
-
   const minutes =
     Math.floor(
       (
@@ -405,7 +242,6 @@ function updateCountdown() {
       (1000 * 60)
     );
 
-
   const seconds =
     Math.floor(
       (
@@ -414,7 +250,6 @@ function updateCountdown() {
       ) /
       1000
     );
-
 
   daysElement.textContent =
     String(days).padStart(2, '0');
@@ -429,11 +264,6 @@ function updateCountdown() {
     String(seconds).padStart(2, '0');
 }
 
-
-// تشغيل العداد
 updateCountdown();
 
-setInterval(
-  updateCountdown,
-  1000
-);
+setInterval(updateCountdown, 1000);
