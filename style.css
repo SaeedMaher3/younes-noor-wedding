@@ -1562,3 +1562,336 @@ body{
   }
 
 }
+/* =====================================
+   AUTO OPEN + VIDEO-LIKE FLOW
+===================================== */
+
+html,
+body{
+  width:100%;
+  min-height:100%;
+}
+
+/* الغلاف يبقى فوق كل شيء بالبداية */
+.opening{
+  opacity:1;
+  visibility:visible;
+  transform:scale(1);
+  transition:
+    opacity 1.15s ease,
+    transform 1.15s ease,
+    visibility 1.15s ease;
+}
+
+/* أثناء فتح الظرف */
+.opening.is-opening .env-flap{
+  transform:rotateX(180deg);
+  z-index:1;
+}
+
+.opening.is-opening .seal-ring{
+  transform:
+    translate(-50%,-50%)
+    scale(.1)
+    rotate(25deg);
+  opacity:0;
+}
+
+.opening.is-opening .luxury-letter{
+  transform:translateY(-34%);
+  box-shadow:0 30px 55px rgba(90,62,35,.16);
+}
+
+/* إخفاء شاشة البداية */
+.opening.is-hidden{
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transform:scale(1.035);
+}
+
+/* الموقع لا يظهر قبل انتهاء الغلاف */
+.site{
+  position:relative;
+  opacity:0;
+  visibility:hidden;
+  transform:translateY(20px);
+  transition:
+    opacity 1.25s ease,
+    transform 1.25s ease,
+    visibility 1.25s ease;
+}
+
+/* ظهور الموقع */
+.site.is-visible{
+  opacity:1;
+  visibility:visible;
+  transform:translateY(0);
+}
+
+/* نخفي فكرة أنه زر */
+.luxury-envelope{
+  cursor:default;
+}
+
+/* النص أسفل الظرف */
+.tap-hint{
+  animation:hintFade 2.4s ease-in-out infinite;
+}
+
+@keyframes hintFade{
+  0%,100%{
+    opacity:.45;
+  }
+
+  50%{
+    opacity:1;
+  }
+}
+
+
+/* =====================================
+   HERO أقرب لفكرة الفيديو
+===================================== */
+
+.hero{
+  min-height:100svh;
+  padding:35px 14px 45px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(251,246,238,.96),
+      rgba(255,250,242,.97)
+    );
+}
+
+/* إطار طويل ناعم حول أول صفحة */
+.hero::before{
+  content:"";
+  position:absolute;
+
+  top:18px;
+  bottom:18px;
+  left:16px;
+  right:16px;
+
+  width:auto;
+  height:auto;
+
+  border:1px solid rgba(183,138,69,.18);
+  border-radius:190px 190px 28px 28px;
+
+  background:none;
+
+  opacity:1;
+
+  pointer-events:none;
+
+  transform:none;
+}
+
+/* نلغي الشكل القديم المتعارض */
+.hero::after{
+  content:"";
+  position:absolute;
+  inset:0;
+
+  width:auto;
+  height:auto;
+
+  background:
+    radial-gradient(
+      circle at 5% 14%,
+      rgba(211,180,141,.23) 0 4px,
+      transparent 5px
+    ),
+    radial-gradient(
+      circle at 95% 17%,
+      rgba(211,180,141,.23) 0 4px,
+      transparent 5px
+    ),
+    radial-gradient(
+      circle at 7% 68%,
+      rgba(211,180,141,.18) 0 5px,
+      transparent 6px
+    ),
+    radial-gradient(
+      circle at 93% 72%,
+      rgba(211,180,141,.18) 0 5px,
+      transparent 6px
+    );
+
+  opacity:.8;
+  pointer-events:none;
+  transform:none;
+}
+
+.hero-card{
+  width:min(760px,92%);
+  padding:46px 26px;
+  border-radius:34px;
+  box-shadow:none;
+
+  background:
+    linear-gradient(
+      rgba(255,252,247,.72),
+      rgba(255,252,247,.72)
+    );
+}
+
+/* نخلي الإطار الداخلي أخف */
+.hero-card::before{
+  inset:9px;
+  border-color:rgba(183,138,69,.12);
+}
+
+
+/* =====================================
+   Sections — أكثر طول وهدوء
+===================================== */
+
+.section{
+  position:relative;
+  min-height:78svh;
+
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+
+  padding:64px 18px;
+}
+
+/* نخلي كل جزء كأنه مشهد */
+.welcome-section,
+.countdown-section,
+.schedule-section,
+.blessing-section,
+.location-section,
+.note-section{
+  overflow:hidden;
+}
+
+/* خلفية متدرجة بين المشاهد */
+.welcome-section{
+  background:
+    linear-gradient(
+      180deg,
+      #fffaf2 0%,
+      #f8efe3 100%
+    );
+}
+
+.countdown-section{
+  background:
+    linear-gradient(
+      180deg,
+      #f8efe3 0%,
+      #fffaf2 100%
+    );
+}
+
+.schedule-section{
+  background:
+    linear-gradient(
+      180deg,
+      #fffaf2,
+      #f6ead9
+    );
+}
+
+.blessing-section{
+  background:
+    linear-gradient(
+      180deg,
+      #f6ead9,
+      #fffaf2
+    );
+}
+
+.location-section{
+  background:
+    linear-gradient(
+      180deg,
+      #fffaf2,
+      #f4e8d5
+    );
+}
+
+.note-section{
+  min-height:100svh;
+
+  background:
+    linear-gradient(
+      180deg,
+      #f4e8d5,
+      #fffaf2
+    );
+}
+
+
+/* =====================================
+   Mobile polish
+===================================== */
+
+@media(max-width:700px){
+
+  .opening{
+    padding:14px;
+  }
+
+  .opening-copy{
+    margin-bottom:4px;
+  }
+
+  .opening-subtitle{
+    font-size:.82rem;
+  }
+
+  .luxury-envelope{
+    --w:min(90vw,470px);
+  }
+
+  .tap-hint{
+    font-size:.82rem;
+  }
+
+  .hero{
+    padding-top:28px;
+    padding-bottom:36px;
+  }
+
+  .hero::before{
+    left:9px;
+    right:9px;
+    top:10px;
+    bottom:10px;
+
+    border-radius:135px 135px 24px 24px;
+  }
+
+  .hero-card{
+    width:94%;
+    padding:34px 17px;
+  }
+
+  .section{
+    min-height:72svh;
+    padding:52px 14px;
+  }
+
+  .luxury-card,
+  .blessing-card,
+  .location-card{
+    width:94%;
+  }
+
+  .countdown{
+    width:94%;
+  }
+
+  .music-btn{
+    left:12px;
+    bottom:12px;
+  }
+}

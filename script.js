@@ -1,4 +1,3 @@
-
 const opening = document.getElementById('opening');
 const envelope = document.getElementById('openInvite');
 const site = document.getElementById('site');
@@ -9,6 +8,7 @@ const musicText = document.getElementById('musicText');
 const musicIcon = document.getElementById('musicIcon');
 
 let opened = false;
+let autoScrollActive = false;
 
 
 // ============================
@@ -25,16 +25,21 @@ function updateMusicButton(isPlaying) {
   }
 }
 
+
 async function startMusic() {
   try {
     music.volume = 0.45;
+
     await music.play();
+
     updateMusicButton(true);
   } catch (error) {
-    console.log('تعذر تشغيل الموسيقى تلقائيًا:', error);
+    console.log('المتصفح منع تشغيل الموسيقى تلقائيًا');
+
     updateMusicButton(false);
   }
 }
+
 
 function stopMusic() {
   music.pause();
@@ -42,46 +47,10 @@ function stopMusic() {
 }
 
 
-// ============================
-// Open Invitation
-// ============================
-
-envelope.addEventListener('click', async () => {
-
-  if (opened) return;
-
-  opened = true;
-
-  // تشغيل الأغنية مباشرة من نفس ضغطة المستخدم
-  startMusic();
-
-  // بدء حركة فتح الظرف
-  envelope.classList.add('open');
-
-  // بعد انتهاء حركة الظرف نظهر الموقع
-  setTimeout(() => {
-
-    opening.classList.add('is-gone');
-
-    site.classList.add('is-visible');
-
-    site.setAttribute('aria-hidden', 'false');
-
-    document.body.style.overflow = 'auto';
-
-  }, 1500);
-
-});
-
-
-// ============================
-// Music Button
-// ============================
-
-musicButton.addEventListener('click', () => {
+musicButton.addEventListener('click', async () => {
 
   if (music.paused) {
-    startMusic();
+    await startMusic();
   } else {
     stopMusic();
   }
@@ -90,50 +59,154 @@ musicButton.addEventListener('click', () => {
 
 
 // ============================
-// Wedding Countdown
+// Open invitation automatically
 // ============================
 
-// موعد الزفاف حسب توقيت الأردن
+function openInvitation() {
+
+  if (opened) return;
+
+  opened = true;
+
+  // حركة فتح الظرف
+  opening.classList.add('is-opening');
+
+  // نحاول تشغيل الموسيقى
+  startMusic();
+
+  setTimeout(() => {
+
+    opening.classList.add('is-hidden');
+
+    site.setAttribute('aria-hidden', 'false');
+    site.classList.add('is-visible');
+
+    document.body.classList.add('invitation-open');
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'instant'
+    });
+
+  }, 1800);
+
+
+  // نبدأ النزول التلقائي
+  setTimeout(() => {
+
+    startAutoScroll();
+
+  }, 3200);
+
+}
+
+
+// ============================
+// Auto Scroll
+// ============================
+
+function startAutoScroll() {
+
+  if (autoScrollActive) return;
+
+  autoScrollActive = true;
+
+  const scrollSpeed = 0.65;
+
+  function scrollFrame() {
+
+    if (!autoScrollActive) return;
+
+    const maxScroll =
+      document.documentElement.scrollHeight -
+      window.innerHeight;
+
+    if (window.scrollY >= maxScroll - 2) {
+
+      autoScrollActive = false;
+
+      return;
+
+    }
+
+    window.scrollBy({
+      top: scrollSpeed,
+      left: 0
+    });
+
+    requestAnimationFrame(scrollFrame);
+  }
+
+  requestAnimationFrame(scrollFrame);
+}
+
+
+// ============================
+// Start automatically
+// ============================
+
+window.addEventListener('load', () => {
+
+  window.scrollTo(0, 0);
+
+  setTimeout(() => {
+
+    openInvitation();
+
+  }, 1800);
+
+});
+
+
+// ============================
+// Countdown
+// ============================
+
 const weddingDate =
   new Date('2026-09-08T20:30:00+03:00').getTime();
 
+
 function updateCountdown() {
 
-  const now = Date.now();
+  const now = new Date().getTime();
 
-  let diff = weddingDate - now;
+  const distance = weddingDate - now;
 
-  if (diff <= 0) {
+  if (distance <= 0) {
 
-    document.getElementById('countdown').innerHTML = `
-      <div style="grid-column:1/-1">
-        <strong>مبارك للعروسين ♡</strong>
-        <span>بدأت ليلة الفرح</span>
-      </div>
-    `;
+    document.getElementById('days').textContent = '00';
+    document.getElementById('hours').textContent = '00';
+    document.getElementById('minutes').textContent = '00';
+    document.getElementById('seconds').textContent = '00';
 
     return;
   }
 
-  const day = 1000 * 60 * 60 * 24;
-  const hour = 1000 * 60 * 60;
-  const minute = 1000 * 60;
 
-  const days = Math.floor(diff / day);
+  const days =
+    Math.floor(distance / (1000 * 60 * 60 * 24));
 
-  diff %= day;
+  const hours =
+    Math.floor(
+      (distance % (1000 * 60 * 60 * 24)) /
+      (1000 * 60 * 60)
+    );
 
-  const hours = Math.floor(diff / hour);
+  const minutes =
+    Math.floor(
+      (distance % (1000 * 60 * 60)) /
+      (1000 * 60)
+    );
 
-  diff %= hour;
+  const seconds =
+    Math.floor(
+      (distance % (1000 * 60)) /
+      1000
+    );
 
-  const minutes = Math.floor(diff / minute);
 
-  diff %= minute;
-
-  const seconds = Math.floor(diff / 1000);
-
-  document.getElementById('days').textContent = days;
+  document.getElementById('days').textContent =
+    String(days).padStart(2, '0');
 
   document.getElementById('hours').textContent =
     String(hours).padStart(2, '0');
@@ -143,7 +216,9 @@ function updateCountdown() {
 
   document.getElementById('seconds').textContent =
     String(seconds).padStart(2, '0');
+
 }
+
 
 updateCountdown();
 
