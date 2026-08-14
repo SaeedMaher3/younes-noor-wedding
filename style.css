@@ -1895,3 +1895,21 @@ body{
     bottom:12px;
   }
 }
+html,
+body{
+  overflow-x:hidden;
+  overflow-y:auto !important;
+  height:auto !important;
+  min-height:100%;
+  -webkit-overflow-scrolling:touch;
+}
+
+body.invitation-open{
+  overflow-y:auto !important;
+  height:auto !important;
+  position:static !important;
+}
+
+.site{
+  min-height:100vh;
+}
