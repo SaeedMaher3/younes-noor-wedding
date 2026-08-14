@@ -8,7 +8,7 @@ const musicText = document.getElementById('musicText');
 const musicIcon = document.getElementById('musicIcon');
 
 let opened = false;
-let autoScrollActive = false;
+let autoScrollStarted = false;
 
 
 // ============================
@@ -16,6 +16,8 @@ let autoScrollActive = false;
 // ============================
 
 function updateMusicButton(isPlaying) {
+  if (!musicText || !musicIcon) return;
+
   if (isPlaying) {
     musicText.textContent = 'إيقاف الموسيقى';
     musicIcon.textContent = '❚❚';
@@ -27,39 +29,43 @@ function updateMusicButton(isPlaying) {
 
 
 async function startMusic() {
+  if (!music) return;
+
   try {
     music.volume = 0.45;
-
     await music.play();
 
     updateMusicButton(true);
   } catch (error) {
     console.log('المتصفح منع تشغيل الموسيقى تلقائيًا');
-
     updateMusicButton(false);
   }
 }
 
 
 function stopMusic() {
+  if (!music) return;
+
   music.pause();
   updateMusicButton(false);
 }
 
 
-musicButton.addEventListener('click', async () => {
+if (musicButton) {
+  musicButton.addEventListener('click', async () => {
+    if (!music) return;
 
-  if (music.paused) {
-    await startMusic();
-  } else {
-    stopMusic();
-  }
-
-});
+    if (music.paused) {
+      await startMusic();
+    } else {
+      stopMusic();
+    }
+  });
+}
 
 
 // ============================
-// Open invitation automatically
+// Open Invitation Automatically
 // ============================
 
 function openInvitation() {
@@ -68,36 +74,38 @@ function openInvitation() {
 
   opened = true;
 
-  // حركة فتح الظرف
-  opening.classList.add('is-opening');
+  // فتح الظرف
+  if (envelope) {
+    envelope.classList.add('open');
+  }
 
-  // نحاول تشغيل الموسيقى
+  // محاولة تشغيل الموسيقى
   startMusic();
 
+
+  // بعد حركة فتح الظرف
   setTimeout(() => {
 
-    opening.classList.add('is-hidden');
+    if (opening) {
+      opening.classList.add('is-gone');
+    }
 
-    site.setAttribute('aria-hidden', 'false');
-    site.classList.add('is-visible');
+    if (site) {
+      site.setAttribute('aria-hidden', 'false');
+      site.classList.add('is-visible');
+    }
 
     document.body.classList.add('invitation-open');
 
-    window.scrollTo({
-      top: 0,
-      behavior: 'instant'
-    });
+    window.scrollTo(0, 0);
 
   }, 1800);
 
 
-  // نبدأ النزول التلقائي
+  // بداية النزول التلقائي
   setTimeout(() => {
-
     startAutoScroll();
-
-  }, 3200);
-
+  }, 3000);
 }
 
 
@@ -107,53 +115,68 @@ function openInvitation() {
 
 function startAutoScroll() {
 
-  if (autoScrollActive) return;
+  if (autoScrollStarted) return;
 
-  autoScrollActive = true;
+  autoScrollStarted = true;
 
-  const scrollSpeed = 0.65;
+  // كل ما الرقم زاد، النزول يصير أسرع
+  const scrollSpeed = 0.55;
 
-  function scrollFrame() {
+  let lastTime = performance.now();
 
-    if (!autoScrollActive) return;
+
+  function scrollFrame(currentTime) {
 
     const maxScroll =
-      document.documentElement.scrollHeight -
-      window.innerHeight;
+      Math.max(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight
+      ) - window.innerHeight;
 
-    if (window.scrollY >= maxScroll - 2) {
 
-      autoScrollActive = false;
-
+    // وصلنا لنهاية الدعوة
+    if (window.scrollY >= maxScroll - 3) {
+      window.scrollTo(0, maxScroll);
       return;
-
     }
 
-    window.scrollBy({
-      top: scrollSpeed,
-      left: 0
-    });
+
+    // يجعل السرعة ثابتة تقريبًا
+    // حتى لو اختلف معدل تحديث الشاشة
+    const delta = currentTime - lastTime;
+
+    lastTime = currentTime;
+
+    const movement =
+      scrollSpeed * (delta / 16.67);
+
+
+    window.scrollBy(
+      0,
+      Math.max(0.1, movement)
+    );
+
 
     requestAnimationFrame(scrollFrame);
   }
+
 
   requestAnimationFrame(scrollFrame);
 }
 
 
 // ============================
-// Start automatically
+// Start Automatically
 // ============================
 
 window.addEventListener('load', () => {
 
   window.scrollTo(0, 0);
 
+  // انتظار بسيط ثم فتح الظرف
   setTimeout(() => {
-
     openInvitation();
-
-  }, 1800);
+  }, 1200);
 
 });
 
@@ -168,58 +191,100 @@ const weddingDate =
 
 function updateCountdown() {
 
-  const now = new Date().getTime();
+  const now = Date.now();
 
-  const distance = weddingDate - now;
+  const distance =
+    weddingDate - now;
+
+
+  const daysElement =
+    document.getElementById('days');
+
+  const hoursElement =
+    document.getElementById('hours');
+
+  const minutesElement =
+    document.getElementById('minutes');
+
+  const secondsElement =
+    document.getElementById('seconds');
+
+
+  if (
+    !daysElement ||
+    !hoursElement ||
+    !minutesElement ||
+    !secondsElement
+  ) {
+    return;
+  }
+
 
   if (distance <= 0) {
 
-    document.getElementById('days').textContent = '00';
-    document.getElementById('hours').textContent = '00';
-    document.getElementById('minutes').textContent = '00';
-    document.getElementById('seconds').textContent = '00';
+    daysElement.textContent = '00';
+    hoursElement.textContent = '00';
+    minutesElement.textContent = '00';
+    secondsElement.textContent = '00';
 
     return;
   }
 
 
   const days =
-    Math.floor(distance / (1000 * 60 * 60 * 24));
+    Math.floor(
+      distance /
+      (1000 * 60 * 60 * 24)
+    );
+
 
   const hours =
     Math.floor(
-      (distance % (1000 * 60 * 60 * 24)) /
+      (
+        distance %
+        (1000 * 60 * 60 * 24)
+      ) /
       (1000 * 60 * 60)
     );
 
+
   const minutes =
     Math.floor(
-      (distance % (1000 * 60 * 60)) /
+      (
+        distance %
+        (1000 * 60 * 60)
+      ) /
       (1000 * 60)
     );
 
+
   const seconds =
     Math.floor(
-      (distance % (1000 * 60)) /
+      (
+        distance %
+        (1000 * 60)
+      ) /
       1000
     );
 
 
-  document.getElementById('days').textContent =
+  daysElement.textContent =
     String(days).padStart(2, '0');
 
-  document.getElementById('hours').textContent =
+  hoursElement.textContent =
     String(hours).padStart(2, '0');
 
-  document.getElementById('minutes').textContent =
+  minutesElement.textContent =
     String(minutes).padStart(2, '0');
 
-  document.getElementById('seconds').textContent =
+  secondsElement.textContent =
     String(seconds).padStart(2, '0');
-
 }
 
 
 updateCountdown();
 
-setInterval(updateCountdown, 1000);
+setInterval(
+  updateCountdown,
+  1000
+);
