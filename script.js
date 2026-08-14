@@ -9,9 +9,8 @@ const musicIcon = document.getElementById('musicIcon');
 
 let opened = false;
 
-let autoMoveStarted = false;
-let autoMoveFrame = null;
-let autoMoveY = 0;
+let autoScrollActive = false;
+let autoScrollFrame = null;
 
 
 // ============================
@@ -36,11 +35,13 @@ async function startMusic() {
 
   try {
     music.volume = 0.45;
+
     await music.play();
 
     updateMusicButton(true);
   } catch (error) {
     console.log('المتصفح منع تشغيل الموسيقى تلقائيًا');
+
     updateMusicButton(false);
   }
 }
@@ -50,6 +51,7 @@ function stopMusic() {
   if (!music) return;
 
   music.pause();
+
   updateMusicButton(false);
 }
 
@@ -76,144 +78,219 @@ function openInvitation() {
 
   opened = true;
 
+
   // فتح الظرف
   if (envelope) {
     envelope.classList.add('open');
   }
 
+
   // محاولة تشغيل الموسيقى
   startMusic();
 
 
-  // إخفاء شاشة البداية
+  // بعد حركة الظرف نظهر الدعوة
   setTimeout(() => {
 
     if (opening) {
       opening.classList.add('is-gone');
     }
 
+
     if (site) {
       site.setAttribute('aria-hidden', 'false');
       site.classList.add('is-visible');
 
-      // نضمن البداية من فوق
-      site.style.transform = 'translate3d(0, 0, 0)';
+      // مهم:
+      // نتأكد إنه ما ضل transform من النسخة القديمة
+      site.style.transform = 'none';
     }
 
+
     document.body.classList.add('invitation-open');
+
+
+    const scroller =
+      document.scrollingElement ||
+      document.documentElement;
+
+
+    scroller.scrollTop = 0;
 
   }, 1800);
 
 
-  // بداية الحركة مثل الفيديو
+  // بداية النزول التلقائي
   setTimeout(() => {
-    startAutoMove();
+    startAutoScroll();
   }, 3200);
 }
 
 
 // ============================
-// Auto Move Like Video
-// iPhone + Android + Desktop
+// Auto Scroll
 // ============================
 
-function startAutoMove() {
-  if (autoMoveStarted || !site) return;
+function startAutoScroll() {
 
-  autoMoveStarted = true;
+  if (autoScrollActive) return;
+
+
+  autoScrollActive = true;
+
+
+  const scroller =
+    document.scrollingElement ||
+    document.documentElement;
+
 
   /*
-    السرعة:
-    0.25 = بطيء
-    0.45 = مناسب
-    0.70 = أسرع
+    السرعة
+
+    0.4 = بطيء جدًا
+    0.7 = هادئ
+    1.0 = متوسط
+    1.4 = أسرع
   */
-  const speed = 0.85;
-
-  let lastTime = performance.now();
+  const speed = 0.8;
 
 
-  function moveFrame(currentTime) {
-    if (!autoMoveStarted) return;
+  let lastTime =
+    performance.now();
+
+
+  function scrollFrame(currentTime) {
+
+    if (!autoScrollActive) {
+      return;
+    }
+
 
     const delta =
-      Math.min(currentTime - lastTime, 40);
-
-    lastTime = currentTime;
-
-
-    const viewportHeight =
-      window.innerHeight;
-
-    const siteHeight =
-      site.scrollHeight;
+      Math.min(
+        currentTime - lastTime,
+        40
+      );
 
 
-    // أقصى مسافة لتحريك الكرت
-    const maxMove =
+    lastTime =
+      currentTime;
+
+
+    const maxScroll =
       Math.max(
         0,
-        siteHeight - viewportHeight
+        scroller.scrollHeight -
+        window.innerHeight
       );
 
 
     // وصلنا للنهاية
-    if (autoMoveY >= maxMove) {
+    if (scroller.scrollTop >= maxScroll - 3) {
 
-      autoMoveY = maxMove;
+      scroller.scrollTop =
+        maxScroll;
 
-      site.style.transform =
-        `translate3d(0, -${autoMoveY}px, 0)`;
-
-      autoMoveStarted = false;
+      stopAutoScroll();
 
       return;
     }
 
 
-    // الحركة
-    autoMoveY +=
+    // حركة ثابتة على الجوال والكمبيوتر
+    const movement =
       speed * (delta / 16.67);
 
 
-    if (autoMoveY > maxMove) {
-      autoMoveY = maxMove;
-    }
+    scroller.scrollTop =
+      Math.min(
+        scroller.scrollTop + movement,
+        maxScroll
+      );
 
 
-    site.style.transform =
-      `translate3d(0, -${autoMoveY}px, 0)`;
-
-
-    autoMoveFrame =
-      requestAnimationFrame(moveFrame);
+    autoScrollFrame =
+      requestAnimationFrame(scrollFrame);
   }
 
 
-  autoMoveFrame =
-    requestAnimationFrame(moveFrame);
+  autoScrollFrame =
+    requestAnimationFrame(scrollFrame);
 }
 
 
 // ============================
-// Restart movement if needed
+// Stop Auto Scroll
 // ============================
 
-function restartAutoMove() {
-  if (!site) return;
+function stopAutoScroll() {
 
-  if (autoMoveFrame) {
-    cancelAnimationFrame(autoMoveFrame);
+  autoScrollActive = false;
+
+
+  if (autoScrollFrame !== null) {
+
+    cancelAnimationFrame(
+      autoScrollFrame
+    );
+
+    autoScrollFrame = null;
   }
-
-  autoMoveY = 0;
-  autoMoveStarted = false;
-
-  site.style.transform =
-    'translate3d(0, 0, 0)';
-
-  startAutoMove();
 }
+
+
+// ============================
+// Manual Control
+// ============================
+
+function userTookControl() {
+
+  // أول ما المستخدم يلمس أو يسحب
+  // نوقف النزول التلقائي
+
+  if (autoScrollActive) {
+    stopAutoScroll();
+  }
+}
+
+
+// iPhone / Android
+window.addEventListener(
+  'touchstart',
+  userTookControl,
+  {
+    passive: true
+  }
+);
+
+
+window.addEventListener(
+  'touchmove',
+  userTookControl,
+  {
+    passive: true
+  }
+);
+
+
+// Mouse wheel
+window.addEventListener(
+  'wheel',
+  userTookControl,
+  {
+    passive: true
+  }
+);
+
+
+// إذا ضغط وسحب بالماوس
+window.addEventListener(
+  'mousedown',
+  userTookControl,
+  {
+    passive: true
+  }
+);
 
 
 // ============================
@@ -222,41 +299,20 @@ function restartAutoMove() {
 
 window.addEventListener('load', () => {
 
-  autoMoveY = 0;
+  const scroller =
+    document.scrollingElement ||
+    document.documentElement;
 
-  if (site) {
-    site.style.transform =
-      'translate3d(0, 0, 0)';
-  }
 
+  scroller.scrollTop = 0;
+
+
+  // يظهر الغلاف بالبداية
   setTimeout(() => {
+
     openInvitation();
+
   }, 1200);
-});
-
-
-// ============================
-// Fix screen rotation / resize
-// ============================
-
-window.addEventListener('resize', () => {
-
-  if (!site) return;
-
-  const maxMove =
-    Math.max(
-      0,
-      site.scrollHeight -
-      window.innerHeight
-    );
-
-  if (autoMoveY > maxMove) {
-    autoMoveY = maxMove;
-
-    site.style.transform =
-      `translate3d(0, -${autoMoveY}px, 0)`;
-  }
-
 });
 
 
@@ -265,13 +321,16 @@ window.addEventListener('resize', () => {
 // ============================
 
 const weddingDate =
-  new Date('2026-09-08T20:30:00+03:00').getTime();
+  new Date(
+    '2026-09-08T20:30:00+03:00'
+  ).getTime();
 
 
 function updateCountdown() {
 
   const now =
     Date.now();
+
 
   const distance =
     weddingDate - now;
@@ -300,6 +359,7 @@ function updateCountdown() {
   }
 
 
+  // إذا خلص موعد العرس
   if (distance <= 0) {
 
     daysElement.textContent = '00';
@@ -362,6 +422,11 @@ function updateCountdown() {
 }
 
 
+// تشغيل العداد
 updateCountdown();
 
-setInterval(updateCountdown, 1000);
+
+setInterval(
+  updateCountdown,
+  1000
+);
