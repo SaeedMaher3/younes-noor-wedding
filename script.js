@@ -128,7 +128,7 @@ function startAutoMove() {
     0.45 = مناسب
     0.70 = أسرع
   */
-  const speed = 0.45;
+  const speed = 0.65;
 
   let lastTime = performance.now();
 
