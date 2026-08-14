@@ -8,7 +8,7 @@ const musicText = document.getElementById('musicText');
 const musicIcon = document.getElementById('musicIcon');
 
 let opened = false;
-let autoScrollStarted = false;
+let autoScrollTimer = null;
 
 
 // ============================
@@ -33,11 +33,13 @@ async function startMusic() {
 
   try {
     music.volume = 0.45;
+
     await music.play();
 
     updateMusicButton(true);
   } catch (error) {
     console.log('المتصفح منع تشغيل الموسيقى تلقائيًا');
+
     updateMusicButton(false);
   }
 }
@@ -47,6 +49,7 @@ function stopMusic() {
   if (!music) return;
 
   music.pause();
+
   updateMusicButton(false);
 }
 
@@ -74,16 +77,18 @@ function openInvitation() {
 
   opened = true;
 
+
   // فتح الظرف
   if (envelope) {
     envelope.classList.add('open');
   }
 
+
   // محاولة تشغيل الموسيقى
   startMusic();
 
 
-  // بعد حركة فتح الظرف
+  // إخفاء شاشة البداية وإظهار الدعوة
   setTimeout(() => {
 
     if (opening) {
@@ -97,14 +102,20 @@ function openInvitation() {
 
     document.body.classList.add('invitation-open');
 
-    window.scrollTo(0, 0);
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'auto'
+    });
 
   }, 1800);
 
 
   // بداية النزول التلقائي
   setTimeout(() => {
+
     startAutoScroll();
+
   }, 3000);
 }
 
@@ -115,53 +126,61 @@ function openInvitation() {
 
 function startAutoScroll() {
 
-  if (autoScrollStarted) return;
+  // إذا شغال من قبل لا نشغله مرة ثانية
+  if (autoScrollTimer !== null) {
+    return;
+  }
 
-  autoScrollStarted = true;
+  /*
+    السرعة:
+    1 = بطيء
+    2 = متوسط
+    3 = أسرع
+  */
+  const pixelsPerStep = 1;
 
-  // كل ما الرقم زاد، النزول يصير أسرع
-  const scrollSpeed = 0.55;
+  /*
+    كل كم ملي ثانية ينزل
+    كل ما قل الرقم يصير أسرع
+  */
+  const intervalTime = 18;
 
-  let lastTime = performance.now();
 
+  autoScrollTimer = setInterval(() => {
 
-  function scrollFrame(currentTime) {
+    const documentHeight = Math.max(
+      document.body.scrollHeight,
+      document.documentElement.scrollHeight
+    );
 
     const maxScroll =
-      Math.max(
-        document.body.scrollHeight,
-        document.documentElement.scrollHeight
-      ) - window.innerHeight;
+      documentHeight - window.innerHeight;
 
 
-    // وصلنا لنهاية الدعوة
-    if (window.scrollY >= maxScroll - 3) {
-      window.scrollTo(0, maxScroll);
+    // إذا وصلنا للنهاية
+    if (window.scrollY >= maxScroll - 5) {
+
+      window.scrollTo({
+        top: maxScroll,
+        behavior: 'auto'
+      });
+
+      clearInterval(autoScrollTimer);
+
+      autoScrollTimer = null;
+
       return;
     }
 
 
-    // يجعل السرعة ثابتة تقريبًا
-    // حتى لو اختلف معدل تحديث الشاشة
-    const delta = currentTime - lastTime;
+    // النزول الفعلي
+    window.scrollBy({
+      top: pixelsPerStep,
+      left: 0,
+      behavior: 'auto'
+    });
 
-    lastTime = currentTime;
-
-    const movement =
-      scrollSpeed * (delta / 16.67);
-
-
-    window.scrollBy(
-      0,
-      Math.max(0.1, movement)
-    );
-
-
-    requestAnimationFrame(scrollFrame);
-  }
-
-
-  requestAnimationFrame(scrollFrame);
+  }, intervalTime);
 }
 
 
@@ -171,13 +190,19 @@ function startAutoScroll() {
 
 window.addEventListener('load', () => {
 
-  window.scrollTo(0, 0);
+  window.scrollTo({
+    top: 0,
+    left: 0,
+    behavior: 'auto'
+  });
 
-  // انتظار بسيط ثم فتح الظرف
+
+  // يبقى الغلاف ظاهر شوي
   setTimeout(() => {
-    openInvitation();
-  }, 1200);
 
+    openInvitation();
+
+  }, 1200);
 });
 
 
@@ -220,6 +245,7 @@ function updateCountdown() {
   }
 
 
+  // إذا خلص الموعد
   if (distance <= 0) {
 
     daysElement.textContent = '00';
@@ -282,9 +308,9 @@ function updateCountdown() {
 }
 
 
+// تشغيل العداد مباشرة
 updateCountdown();
 
-setInterval(
-  updateCountdown,
-  1000
-);
+
+// تحديث العداد كل ثانية
+setInterval(updateCountdown, 1000);
